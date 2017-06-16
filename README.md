@@ -1,6 +1,6 @@
 # Andromeda
 
-Andromeda will be a renderer for photorealistic, unbiased rendering both for production and hopefully games.
+Andromeda will be a renderer for photorealistic, unbiased rendering both for production and hopefully games. Currently it runs into an infinite loop in a GLSL shader. So if you do run it, at the very LEAST, it will COMPLETELY FREEZE UP YOUR PC and youwill need to RESTART. Don't run it.
 
 ## Installation
 
