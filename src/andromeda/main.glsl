@@ -124,7 +124,7 @@ bool q = false; // BUG checking mechanism, remove
 INode find (vec3 p) {
   INode current = child(root, 0);
   uint texel;
-  while (!current.parent.leaf) {
+  do {
     for (int i = 0; i < 8; i++) {
       current = child(root, i);
       if (current.exists) { // If this node exists
@@ -134,7 +134,7 @@ INode find (vec3 p) {
       }
     }
     return current;
-  }
+  }while (!current.parent.leaf);
 
   return current;
 }
@@ -174,9 +174,11 @@ Intersection trace (Ray r) {
 void main () {
   view.o = cameraPosition;
   view.d = ray;
-  root.leaf = false;
-  root.empty = false;
-  root.pointer = 0;
+  Node rootRoot;
+  rootRoot.min = vec3(-10.0, -10.0, -10.0);
+  rootRoot.max = vec3(10.0, 10.0, 10.0);
+  root = decode(octree[0], rootRoot, 0);
+
   root.min = vec3(-10.0, -10.0, -10.0);
   root.max = vec3(10.0, 10.0, 10.0);
 
