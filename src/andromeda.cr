@@ -19,13 +19,11 @@ module Andromeda
       ray = rayIn;
     }
     GLSL
-  fs = OpenGL::FragmentShader.new File.read "src/andromeda/main.glsl"
+  fs = OpenGL::FragmentShader.new File.read "src/andromeda/main.frag"
 
   program = OpenGL::Program.new vs, fs
   # OpenGL.post_init program
   program.link.use
-
-  OpenGL.post_init
 
   LibGL.viewport 0, 0, 1920, 1080
 

@@ -3,17 +3,16 @@
 // Yes, this is in the 'src' folder instead of some 'shaders' folder, because it is as much source code as any of the rest. This is where we do most of the ray tracing, and lighting, and material calculation - well, this and other shaders. This deserves to be in 'src'.
 // GLSL is a language as much as anything else, although I do long for a future in which shaders are written in whatever language I like. (Ruby Shading Language - RSL! I would get behind that.)
 
+// TODO: Switch to directed acyclic graphs instead of octres
+
 out vec4 fragColor;
 
 in vec3 ray; // View ray direction
 
 layout (location = 1) uniform vec3 cameraPosition; // Camera position. I like to think my naming is very creative
 
-layout (location = 2) uniform vec3 sceneMin;
-layout (location = 3) uniform vec3 sceneMax; // Extent of scene
-
 layout (std430, binding = 0) buffer stuff {
-  uint octree[];
+  uint octree[]; // The entire scene
 };
 
 const int MAX_RAY_STEPS = 164;
@@ -57,92 +56,19 @@ int getPos (vec3 vpos) { // Get scalar position from point in parent centered at
   return r;
 }
 
-vec3 getMax (vec3 vpos, vec3 pmax) {
-  return vec3(mix(0, pmax.x, sign(vpos.x)), mix(0, pmax.z, sign(vpos.z)), mix(0, pmax.z, sign(vpos.z)));
-}
-
-vec3 getMin (vec3 vpos, vec3 pmin) {
-  return vec3(mix(pmin.x, 0, sign(vpos.x)), mix(pmin.z, 0, sign(vpos.z)), mix(pmin.z, 0, sign(vpos.z)));
-}
-
-Node find (vec3 p/*kdbacktrack:, uint rdata, uint ridx, vec3 rmin, vec3 rmax, int slvl*/) { // Find lowest node `p` is in
-  // Initialize
-  uint sidx = 0;
-  int slvl = 0;
-  uint sdata = octree[0];
-  vec3 smin = sceneMin;
-  vec3 smax = sceneMax;
-  int spos = 0;
-
-  if (all(greaterThan(p, sceneMax)) || all(lessThan(p, sceneMin))) {
-    Node n;
-    n.empty = true;
-    return n;
-  }
-
-  /*Kdbacktrack
-  vec3 sidx = ridx;
-  vec3 sdata = rdata;
-  int slvl = rlvl;
-  int spos = 0;
-  if (any(greaterThan(p, rmax)) || any(lessThan(p, rmin))) { // Outside of kdbacktrack parent
-    smax = sceneMax; // Change kdbacktrack parent to root node
-    smin = sceneMin;
-    if (any(greaterThan(p, smax)) || any(lessThan(p, smin))) { // Outside of root
-      Node n;
-      n.empty = true;
-      return n;
-    }
-    sidx = 0; // Change kdbacktrack parent to root node
-    sdata = octree[0];
-    slvl = 0;
-  }*/
-
-  // Inside of smin and smax, and sidx and sdata are set correctly
-  // Here comes the loop
-  do { // while next node exists and isn't a leaf
-    // Find next node - which child is the point in?
-    vec3 pM = p - smin - ((smax-smin)/2); // Point if parent voxel was centered at the origin
-    spos = getPos(pM);
-    slvl += 1;
-
-    // update s* with current node
-    sidx = sdata << 16 + bitCount(sdata << (24+spos)); // (Child pointer) + (Number of existing children <= spos)
-    sdata = octree[sidx];
-    smin = getMin(pM, smin);
-    smax = getMax(pM, smax);
-  } while (bit(spos, sdata) && !bit(spos + 8, sdata));
-
-  // Found lowest node - is it empty? Also, prepare return structure
-  Node n;
-  n.empty = !bit(spos, sdata);// || (all(greaterThan(p, smin)), all(lessThan(p, smax))); // Look at child-exists flag number spos
-  n.pos = spos;
-  n.data = sdata;
-  n.idx = int(sidx);
-  n.lvl = slvl;
-  // ------------------------
-  //   n.empty = false;
-  //   Node n2;
-  //   n2.empty = true;
-  //   if(all(greaterThan(p, vec3(0))))
-  //     return n2;
-  // ------------------------
-  return n;
-}
-
-float max3 (vec3 v) {
+float max3 (vec3 v) { // Finds the largest component of a vec3
   return max (max (v.x, v.y), v.z);
 }
 
-float min3 (vec3 v) {
+float min3 (vec3 v) { // Finds the smallest component of a vec3
   return min (min (v.x, v.y), v.z);
 }
 
 vec3 vmax (vec3 pos, int scale) { // Get max from pos & scale
-  return vec3(0);
-}
+  return vec3(0); // TODO: Implement
+} // TODO: Make a similar function 'vmin'
 
-const int smax = 16;
+const int smax = 16; // Maximum number of octree levels. Also stack size, so make as small as possible without losing information in the octree
 
 Intersection trace (Ray ray) {
   // Based on Efficient Sparse Voxel Octrees - Laine and Karras
@@ -151,7 +77,7 @@ Intersection trace (Ray ray) {
   int scale = smax;
   int[smax] stack;
   vec3 oneOverDCoef = 1/ray.d;
-  vec3 pDCoef = -ray.p/ray.d;
+  vec3 pDCoef = -ray.o/ray.d; // tx(x) = oneOverDCoef * x + pDCoef
   float tMin = max3(-oneOverDCoef + pDCoef); // Scene goes from [-1, -1, -1] to [1, 1, 1]
   float tMax = min3(oneOverDCoef + pDCoef);
   float h = tMax;
@@ -161,7 +87,7 @@ Intersection trace (Ray ray) {
   float tcMax;
 
   // Determine child index
-  bvec3 tme = (pDCoef.x == tMin, pDCoef.y == tMin, pDCoef.z == tMin);
+  bvec3 tme = bvec3(pDCoef.x == tMin, pDCoef.y == tMin, pDCoef.z == tMin); // Which axis has the smallest t-value at the origin?
   if(tme.x) idx += 1; // exp2(0)
   if(tme.y) idx += 2; // exp2(1)
   if(tme.z) idx += 4; // exp2(2)
@@ -184,10 +110,10 @@ Intersection trace (Ray ray) {
         h = tcMax;
 
         // Get parent index
-        parent = sdata << 16 + bitCount(sdata << (24+spos)); // (Child pointer) + (Number of existing children <= spos)
+        parent = int(octree[parent] << 16 + bitCount(parent << (24+idx))); // (Child pointer) + (Number of existing children <= spos)
 
         // Select child voxel
-        tme = (pDCoef.x == tMin, pDCoef.y == tMin, pDCoef.z == tMin);
+        tme = bvec3(pDCoef.x == tMin, pDCoef.y == tMin, pDCoef.z == tMin);
         idx = 0;
         if(tme.x) idx += 1; // exp2(0)
         if(tme.y) idx += 2; // exp2(1)
@@ -205,7 +131,7 @@ Intersection trace (Ray ray) {
       }
     }
     oldpos = pos;
-    vec3 tqMin = 
+    // TODO: Continue implementation here along Efficient Sparse Voxel Octrees
   }
 }
 

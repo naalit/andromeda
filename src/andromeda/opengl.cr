@@ -224,9 +224,9 @@ module Andromeda::OpenGL
     LibGL.enable_vertex_attrib_array 1
 
     scene = [
-      1_u32 | CHILD4, # Root node
-      2_u32 | CHILD2 | CHILD3 | LCHILD3,
-      0_u32 | CHILD1 | CHILD2 | LCHILD1 | LCHILD2,
+      1_u32 | CHILD4,                              # Root node. Has one child - child 4 - at index 1.
+      2_u32 | CHILD2 | CHILD3 | LCHILD3,           # Children 2 and 3 exist. Child 2 is at index 2, and child 3 is a leaf.
+      0_u32 | CHILD1 | CHILD2 | LCHILD1 | LCHILD2, # Children 1 and 2 exist, and are both leaves.
     ]
 
     # scene = [0_u32 | CHILD1 | LCHILD1 | CHILD2 | LCHILD2 | CHILD3 | LCHILD3 | CHILD4 | LCHILD4 | CHILD5 | LCHILD5 | CHILD6 | LCHILD6 | CHILD7 | LCHILD7 | CHILD0 | LCHILD0]
@@ -236,12 +236,8 @@ module Andromeda::OpenGL
     @@octree.bind
     @@octree.data scene, LibGL::E_STATIC_DRAW
     LibGL.bind_buffer_base LibGL::E_SHADER_STORAGE_BUFFER, 0, @@octree.@handle
-  end
 
-  def post_init
     LibGL.uniform3f(1, @@pos.x, @@pos.y, @@pos.z)
-    LibGL.uniform3f(2, -10_f32, -10_f32, -10_f32)
-    LibGL.uniform3f(3, 10_f32, 10_f32, 10_f32)
   end
 
   def draw
