@@ -184,14 +184,22 @@ module Andromeda::OpenGL
     dirs
   end
 
-  CHILD0 = 2_u32 ** (31 - 0) # Childmask flags
-  CHILD1 = 2_u32 ** (31 - 1)
-  CHILD2 = 2_u32 ** (31 - 2)
-  CHILD3 = 2_u32 ** (31 - 3)
-  CHILD4 = 2_u32 ** (31 - 4)
-  CHILD5 = 2_u32 ** (31 - 5)
-  CHILD6 = 2_u32 ** (31 - 6)
-  CHILD7 = 2_u32 ** (31 - 7)
+  CHILD0  = 2_u32 ** (31 - 0) # Childmask flags
+  CHILD1  = 2_u32 ** (31 - 1)
+  CHILD2  = 2_u32 ** (31 - 2)
+  CHILD3  = 2_u32 ** (31 - 3)
+  CHILD4  = 2_u32 ** (31 - 4)
+  CHILD5  = 2_u32 ** (31 - 5)
+  CHILD6  = 2_u32 ** (31 - 6)
+  CHILD7  = 2_u32 ** (31 - 7)
+  LCHILD0 = 2_u32 ** (31 - 8) # Leafmask flags
+  LCHILD1 = 2_u32 ** (31 - 9)
+  LCHILD2 = 2_u32 ** (31 - 10)
+  LCHILD3 = 2_u32 ** (31 - 11)
+  LCHILD4 = 2_u32 ** (31 - 12)
+  LCHILD5 = 2_u32 ** (31 - 13)
+  LCHILD6 = 2_u32 ** (31 - 14)
+  LCHILD7 = 2_u32 ** (31 - 15)
 
   def init
     points = [
@@ -216,16 +224,24 @@ module Andromeda::OpenGL
     LibGL.enable_vertex_attrib_array 1
 
     scene = [
-      0_u32 | CHILD4, # Root node. Leaf, too.
+      1_u32 | CHILD4, # Root node
+      2_u32 | CHILD2 | CHILD3 | LCHILD3,
+      0_u32 | CHILD1 | CHILD2 | LCHILD1 | LCHILD2,
     ]
+
+    # scene = [0_u32 | CHILD1 | LCHILD1 | CHILD2 | LCHILD2 | CHILD3 | LCHILD3 | CHILD4 | LCHILD4 | CHILD5 | LCHILD5 | CHILD6 | LCHILD6 | CHILD7 | LCHILD7 | CHILD0 | LCHILD0]
 
     @@octree = Buffer(UInt32).new
     @@octree.target = LibGL::E_SHADER_STORAGE_BUFFER
     @@octree.bind
     @@octree.data scene, LibGL::E_STATIC_DRAW
     LibGL.bind_buffer_base LibGL::E_SHADER_STORAGE_BUFFER, 0, @@octree.@handle
+  end
 
+  def post_init
     LibGL.uniform3f(1, @@pos.x, @@pos.y, @@pos.z)
+    LibGL.uniform3f(2, -10_f32, -10_f32, -10_f32)
+    LibGL.uniform3f(3, 10_f32, 10_f32, 10_f32)
   end
 
   def draw

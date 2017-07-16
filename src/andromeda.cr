@@ -25,6 +25,8 @@ module Andromeda
   # OpenGL.post_init program
   program.link.use
 
+  OpenGL.post_init
+
   LibGL.viewport 0, 0, 1920, 1080
 
   while main_window.update && !main_window.key_pressed? LibGLFW::KEY_ESCAPE
